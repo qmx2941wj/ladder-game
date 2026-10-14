@@ -1063,6 +1063,23 @@
       ctx.restore();
     }
 
+    // 사다리 애니메이션 시작 시 캔버스 아래쪽(결과 슬롯)까지 한눈에 보이도록 화면 스크롤
+    function scrollBoardToView() {
+      const targetEl = document.getElementById("canvasScrollWrap");
+      if (!targetEl) return;
+
+      const rect = targetEl.getBoundingClientRect();
+      // 캔버스 하단이 현재 화면(뷰포트) 바닥보다 아래에 잘려 있는 경우
+      if (rect.bottom > window.innerHeight - 16) {
+        const currentScrollY = window.pageYOffset || document.documentElement.scrollTop;
+        const targetScrollY = currentScrollY + (rect.bottom - window.innerHeight) + 24;
+        window.scrollTo({
+          top: targetScrollY,
+          behavior: "smooth"
+        });
+      }
+    }
+
     /**************************************************************
      * 7. 개별 애니메이션 및 순차 릴레이 실행 (Promise 기반)
      **************************************************************/
@@ -1074,6 +1091,7 @@
         }
 
         switchMobileTab("board");
+        scrollBoardToView();
         state.hasStartedAny = true;
 
         const targetSlot = state.paths[participantIdx].endCol;
@@ -1134,6 +1152,9 @@
         stopSequentialPlay();
         return;
       }
+
+      switchMobileTab("board");
+      scrollBoardToView();
 
       if (state.status.every(s => s === "REVEALED")) {
         resetRevealedOnly();
@@ -1197,6 +1218,7 @@
           clickY >= top.y - 46 &&
           clickY <= top.y - 10
         ) {
+          scrollBoardToView();
           animateSingleParticipant(c);
           break;
         }
