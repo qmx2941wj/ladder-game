@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>인터랙티브 사다리타기 프로그램</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --secondary: #0ea5e9;
+      --secondary-hover: #0284c7;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+
+    /* 1. 상단 컨트롤 바 */
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card);
+      padding: 14px 20px;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .header-title { font-size: 1.25rem; font-weight: 800; color: var(--primary); }
+    .status-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge {
+      background: #f1f5f9;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .badge span { color: var(--primary); font-weight: 800; }
+    .action-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      transition: all 0.15s ease;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-secondary { background: var(--secondary); color: #fff; }
+    .btn-secondary:hover:not(:disabled) { background: var(--secondary-hover); }
+    .btn-outline { background: #fff; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover:not(:disabled) { background: #f1f5f9; }
+    .btn-sm { padding: 6px 10px; font-size: 0.8rem; }
+
+    /* 모바일 전용 탭 네비게이션 (PC에서는 숨김) */
+    .mobile-tabs {
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      background: #e2e8f0;
+      padding: 5px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+    }
+    .tab-btn {
+      background: transparent;
+      color: var(--muted);
+      padding: 10px 6px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .tab-btn.active {
+      background: var(--card);
+      color: var(--primary);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    /* 메인 레이아웃 (보드 + 사이드 패널) */
+    .main-container {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    /* 2. 사다리 인터랙티브 보드 */
+    .board-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      text-align: center;
+      overflow: hidden;
+    }
+    .board-hint {
+      font-size: 0.86rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+      background: #f8fafc;
+      padding: 9px 16px;
+      border-radius: 8px;
+      display: inline-block;
+      line-height: 1.4;
+    }
+
+    .canvas-scroll-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      text-align: center;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      cursor: pointer;
+    }
+
+    /* 3. 사이드 패널 (통합 설정 + 결과 요약) */
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .panel-card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .panel-title {
+      font-size: 1.02rem;
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--muted);
+    }
+    textarea, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.92rem;
+      outline: none;
+    }
+    textarea:focus, input:focus { border-color: var(--primary); }
+
+    /* 당첨 설정 리스트 */
+    .prize-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+    .prize-row {
+      display: grid;
+      grid-template-columns: 1fr 90px 36px;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-del { background: #fee2e2; color: #ef4444; padding: 8px; }
+    .btn-del:hover { background: #fecaca; }
+
+    /* 결과 요약 테이블 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    th { background: #f8fafc; color: var(--muted); font-weight: 600; }
+    .win-badge {
+      background: #dcfce7;
+      color: #15803d;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+    .lose-badge {
+      background: #f1f5f9;
+      color: #64748b;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+    }
+    .moving-badge {
+      background: #fef3c7;
+      color: #b45309;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+
+    /* 모바일 전용 반응형/적응형 UI (768px 이하) */
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .header-bar { padding: 12px 14px; gap: 10px; }
+      .header-title { font-size: 1.1rem; width: 100%; }
+      .status-badges { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      .badge { padding: 6px 4px; font-size: 0.76rem; text-align: center; }
+      .action-btns { width: 100%; justify-content: space-between; }
+      .action-btns button { flex: 1 1 calc(33.3% - 6px); padding: 9px 6px; font-size: 0.8rem; }
+
+      .mobile-tabs { display: grid; }
+      .main-container { grid-template-columns: 1fr; }
+      .board-card { padding: 14px 10px; }
+
+      body[data-mobile-tab="board"] #settingsCard,
+      body[data-mobile-tab="board"] #resultsCard { display: none; }
+
+      body[data-mobile-tab="settings"] #boardSection,
+      body[data-mobile-tab="settings"] #resultsCard { display: none; }
+
+      body[data-mobile-tab="results"] #boardSection,
+      body[data-mobile-tab="results"] #settingsCard { display: none; }
+    }
+  </style>
+</head>
+<body data-mobile-tab="board">
+
+  <!-- 1. 상단 컨트롤 바 -->
+  <header class="header-bar">
+    <div class="header-title">🪜 인터랙티브 사다리타기</div>
+    <div class="status-badges">
+      <div class="badge">참가자 <span id="statParticipants">0</span>명</div>
+      <div class="badge">당첨 <span id="statWinners">0</span> / 꽝 <span id="statLosers">0</span></div>
+      <div class="badge">총액 <span id="statTotalPrize">0</span>원</div>
+    </div>
+    <div class="action-btns">
+      <label style="font-size:0.84rem; font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input type="checkbox" id="blindToggle" checked> 🌫️ 시작 전 가림막
+      </label>
+      <label style="font-size:0.84rem; font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer; margin-right:4px;">
+        <input type="checkbox" id="hidePrizeToggle" checked> ❓ 도착 전 당첨금 숨김
+      </label>
+      <button class="btn-secondary" id="btnSequential">▶️ 차례로 실행</button>
+      <button class="btn-outline" id="btnResetReveal">↩️ 초기화</button>
+      <button class="btn-primary" id="btnRegenerate">🔄 재배치</button>
+    </div>
+  </header>
+
+  <!-- 모바일 전용 3단 탭 네비게이션 -->
+  <nav class="mobile-tabs">
+    <button type="button" class="tab-btn active" data-tab="board">🪜 사다리 게임</button>
+    <button type="button" class="tab-btn" data-tab="settings">⚙️ 게임 설정</button>
+    <button type="button" class="tab-btn" data-tab="results">📊 결과 요약</button>
+  </nav>
+
+  <main class="main-container">
+    <!-- 2. 사다리 메인 보드 -->
+    <section class="board-card" id="boardSection">
+      <div class="board-hint">
+        💡 사다리 상단의 <b>참가자 이름 박스</b>를 클릭하거나 <b>[▶️ 차례로 실행]</b>을 누르면 가림막이 걷히며 당첨/꽝 자리로 이동합니다!
+      </div>
+
+      <div class="canvas-scroll-wrap" id="canvasScrollWrap">
+        <canvas id="ladderCanvas"></canvas>
+      </div>
+    </section>
+
+    <!-- 3. 사이드 패널 -->
+    <aside class="side-panel">
+      <!-- 통합 설정 영역 -->
+      <div class="panel-card" id="settingsCard">
+        <div class="panel-title">
+          <span>⚙️ 통합 게임 설정</span>
+          <span style="font-size:0.75rem; color:var(--primary); font-weight:600;">입력 후 생성 버튼 클릭</span>
+        </div>
+
+        <!-- 참가자 입력 (인원수 자동 계산) -->
+        <div class="form-group">
+          <div class="form-label">
+            <span>참가자 명단 (쉼표 또는 줄바꿈 구분)</span>
+            <span>자동 인식: <strong id="liveCount" style="color:var(--primary);">8</strong>명</span>
+          </div>
+          <textarea id="namesInput" rows="3" placeholder="참가자 이름을 쉼표(,)나 줄바꿈으로 구분해 입력하세요">아이언맨, 캡틴 아메리카, 토르, 스파이더맨, 헐크, 블랙 위도우, 닥터 스트레인지, 호크아이</textarea>
+        </div>
+
+        <!-- 당첨금 및 당첨자 수 설정 -->
+        <div class="form-group">
+          <div class="form-label">
+            <span>당첨 금액(원) 및 당첨 인원(명) 설정</span>
+            <button type="button" class="btn-outline btn-sm" id="btnAddPrize">+ 항목 추가</button>
+          </div>
+          <div class="prize-list" id="prizeList"></div>
+          <p style="font-size:0.78rem; color:var(--muted);">
+            * 참가자 수보다 당첨 인원이 적으면 나머지는 자동으로 <b>'꽝(0원)'</b>으로 배정됩니다.
+          </p>
+        </div>
+
+        <button class="btn-primary" style="width:100%;" id="btnApplySettings">✅ 설정 적용 및 사다리 생성</button>
+      </div>
+
+      <!-- 실시간 결과 요약표 -->
+      <div class="panel-card" id="resultsCard">
+        <div class="panel-title">
+          <span>📊 실시간 결과 요약표</span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>참가자</th>
+              <th>도착 자리</th>
+              <th>결과 (당첨금)</th>
+            </tr>
+          </thead>
+          <tbody id="resultTableBody"></tbody>
+        </table>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    /**************************************************************
+     * 1. 핵심 상태 데이터 모델 (State)
+     **************************************************************/
+    const state = {
+      participants: [
+        "아이언맨", "캡틴 아메리카", "토르", "스파이더맨",
+        "헐크", "블랙 위도우", "닥터 스트레인지", "호크아이"
+      ],
+      prizeConfigs: [
+        { amount: 50000, count: 1 },
+        { amount: 30000, count: 1 },
+        { amount: 10000, count: 2 }
+      ],
+      ladderRows: 14,               // 가로 발판 행 수
+      ladderGrid: [],               // 2차원 불리언 배열 [row][col]
+      bottomSlots: [],              // 하단 슬롯에 배치된 당첨금 배열
+      slotOccupants: [],            // 하단 슬롯에 도착해 안착한 참가자 인덱스 (도착 전 null)
+      paths: [],                    // 참가자별 이동 경유지(Waypoints) 및 도착 정보
+      status: [],                   // 참가자별 상태: 'READY' | 'MOVING' | 'REVEALED'
+      animatingIndex: null,         // 현재 사다리를 타고 내려가는 참가자 인덱스
+      animProgress: 0,              // 현재 애니메이션 진행률 (0.0 ~ 1.0)
+      animSpeed: 0.008,             // 애니메이션 이동 속도
+      hasStartedAny: false,         // 사다리 타기가 한 번이라도 시작되었는지 여부
+      isSequentialRunning: false,
+      stopSequentialFlag: false,
+      blindMode: true,              // 기본값: 시작 전 사다리 가림막 체크
+      hidePrizeBeforeArrival: true  // 기본값: 도착 전 당첨금 숨김 체크
+    };
+
+    /**************************************************************
+     * 무제한 중복 방지 색상 생성기
+     * - 기본 12명까지는 서로 완전히 다른 색상 계열(빨강, 파랑, 주황, 보라, 초록, 남색, 핑크, 청록 등)을 지정
+     * - 인원이 13명 이상으로 아무리 많아져도 황금각(Golden Angle, 137.508도) 기반 HSL 분산으로 절대 중복되지 않는 색상 생성
+     **************************************************************/
+    const DISTINCT_PALETTE = [
+      "#e11d48", // 1. 아이언맨: 크림슨 레드
+      "#2563eb", // 2. 캡틴 아메리카: 로얄 블루
+      "#d97706", // 3. 토르: 앰버 골드
+      "#7c3aed", // 4. 스파이더맨: 바이올렛 퍼플 (붉은색 중복 완전 배제)
+      "#16a34a", // 5. 헐크: 에메랄드 그린
+      "#334155", // 6. 블랙 위도우: 다크 슬레이트
+      "#0891b2", // 7. 닥터 스트레인지: 시안 블루
+      "#db2777", // 8. 호크아이: 마젠타 핑크
+      "#ea580c", // 9. 딥 오렌지
+      "#4f46e5", // 10. 인디고
+      "#65a30d", // 11. 라임 그린
+      "#9333ea"  // 12. 퍼플
+    ];
+
+    function getParticipantColor(idx) {
+      if (idx < DISTINCT_PALETTE.length) {
+        return DISTINCT_PALETTE[idx];
+      }
+      // 13번째 참가자부터는 황금각을 이용해 색상환에서 겹치지 않는 고유 HSL 색상 생성
+      const goldenAngle = 137.507764;
+      const hue = Math.round((idx * goldenAngle) % 360);
+      const saturation = 68 + (idx % 3) * 8; // 68%, 76%, 84% 교차
+      const lightness = 42 + (idx % 2) * 8;  // 42%, 50% 교차
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+
+    const canvas = document.getElementById("ladderCanvas");
+    const ctx = canvas.getContext("2d");
+    const canvasScrollWrap = document.getElementById("canvasScrollWrap");
+    const namesInput = document.getElementById("namesInput");
+    const liveCount = document.getElementById("liveCount");
+    const prizeListEl = document.getElementById("prizeList");
+    const resultTableBody = document.getElementById("resultTableBody");
+    const btnSequential = document.getElementById("btnSequential");
+    const blindToggle = document.getElementById("blindToggle");
+    const hidePrizeToggle = document.getElementById("hidePrizeToggle");
+
+    // 모바일 탭 전환 로직
+    function switchMobileTab(tabName) {
+      document.body.setAttribute("data-mobile-tab", tabName);
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === tabName);
+      });
+      if (tabName === "board") {
+        resizeAndDrawCanvas();
+      }
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => switchMobileTab(btn.dataset.tab));
+    });
+
+    /**************************************************************
+     * 2. 효과음 합성기 (Web Audio API)
+     **************************************************************/
+    let audioCtx = null;
+    function playBeep(freq = 440, duration = 0.05, type = "sine") {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.07, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    /**************************************************************
+     * 3. 통합 설정 패널 UI (자동 인원 인식 & 당첨 항목 관리)
+     **************************************************************/
+    function parseNames() {
+      return namesInput.value
+        .split(/[\n,]+/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    namesInput.addEventListener("input", () => {
+      liveCount.textContent = parseNames().length;
+    });
+
+    function renderPrizeConfigInputs() {
+      prizeListEl.innerHTML = "";
+      state.prizeConfigs.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = "prize-row";
+        row.innerHTML = `
+          <input type="number" min="0" step="1000" value="${item.amount}" placeholder="당첨금(원)" data-idx="${idx}" class="inp-amount" />
+          <input type="number" min="1" value="${item.count}" placeholder="인원(명)" data-idx="${idx}" class="inp-count" />
+          <button type="button" class="btn-del" data-idx="${idx}" title="삭제">✕</button>
+        `;
+        prizeListEl.appendChild(row);
+      });
+
+      prizeListEl.querySelectorAll(".inp-amount").forEach(el => {
+        el.addEventListener("input", e => {
+          state.prizeConfigs[e.target.dataset.idx].amount = Number(e.target.value) || 0;
+        });
+      });
+      prizeListEl.querySelectorAll(".inp-count").forEach(el => {
+        el.addEventListener("input", e => {
+          state.prizeConfigs[e.target.dataset.idx].count = Math.max(1, Number(e.target.value) || 1);
+        });
+      });
+      prizeListEl.querySelectorAll(".btn-del").forEach(el => {
+        el.addEventListener("click", e => {
+          state.prizeConfigs.splice(Number(e.target.dataset.idx), 1);
+          renderPrizeConfigInputs();
+        });
+      });
+    }
+
+    document.getElementById("btnAddPrize").addEventListener("click", () => {
+      state.prizeConfigs.push({ amount: 10000, count: 1 });
+      renderPrizeConfigInputs();
+    });
+
+    /**************************************************************
+     * 4. 핵심 알고리즘 (가로 발판 생성, 셔플, 경유지 추적)
+     **************************************************************/
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function generateLadderGrid(cols, rows) {
+      const grid = Array.from({ length: rows }, () => Array(cols - 1).fill(false));
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols - 1; c++) {
+          const prevHasBridge = c > 0 && grid[r][c - 1];
+          if (!prevHasBridge && Math.random() < 0.45) {
+            grid[r][c] = true;
+          }
+        }
+      }
+
+      for (let c = 0; c < cols - 1; c++) {
+        const hasAny = grid.some(row => row[c]);
+        if (!hasAny) {
+          for (let attempt = 0; attempt < 25; attempt++) {
+            const r = Math.floor(Math.random() * rows);
+            const leftConflict = c > 0 && grid[r][c - 1];
+            const rightConflict = c < cols - 2 && grid[r][c + 1];
+            if (!leftConflict && !rightConflict) {
+              grid[r][c] = true;
+              break;
+            }
+          }
+        }
+      }
+      return grid;
+    }
+
+    function computeAllPaths() {
+      const cols = state.participants.length;
+      const rows = state.ladderRows;
+      state.paths = [];
+
+      for (let startCol = 0; startCol < cols; startCol++) {
+        let currentCol = startCol;
+        const waypoints = [{ col: currentCol, row: -1 }];
+
+        for (let r = 0; r < rows; r++) {
+          waypoints.push({ col: currentCol, row: r });
+          if (currentCol < cols - 1 && state.ladderGrid[r][currentCol]) {
+            currentCol += 1;
+            waypoints.push({ col: currentCol, row: r });
+          } else if (currentCol > 0 && state.ladderGrid[r][currentCol - 1]) {
+            currentCol -= 1;
+            waypoints.push({ col: currentCol, row: r });
+          }
+        }
+        waypoints.push({ col: currentCol, row: rows });
+        state.paths.push({
+          startCol,
+          endCol: currentCol,
+          prize: state.bottomSlots[currentCol],
+          waypoints
+        });
+      }
+    }
+
+    /**************************************************************
+     * 5. 사다리 생성 및 초기화
+     **************************************************************/
+    function initGame(fromSettingsBtn = false) {
+      stopSequentialPlay();
+
+      const names = parseNames();
+      if (names.length < 2) {
+        alert("참가자 이름을 최소 2명 이상 입력해주세요!");
+        return;
+      }
+
+      let totalWinners = 0;
+      let totalPrizeSum = 0;
+      const flatPrizes = [];
+
+      for (const cfg of state.prizeConfigs) {
+        if (cfg.amount > 0 && cfg.count > 0) {
+          totalWinners += cfg.count;
+          totalPrizeSum += cfg.amount * cfg.count;
+          for (let i = 0; i < cfg.count; i++) {
+            flatPrizes.push(cfg.amount);
+          }
+        }
+      }
+
+      if (totalWinners > names.length) {
+        alert(`설정된 총 당첨 인원(${totalWinners}명)이 참가자 수(${names.length}명)보다 많습니다.\n당첨 인원을 줄이거나 참가자 이름을 더 추가해주세요.`);
+        return;
+      }
+
+      while (flatPrizes.length < names.length) {
+        flatPrizes.push(0);
+      }
+
+      state.participants = names;
+      state.bottomSlots = shuffleArray(flatPrizes);
+      state.slotOccupants = Array(names.length).fill(null);
+      state.ladderGrid = generateLadderGrid(names.length, state.ladderRows);
+      state.status = Array(names.length).fill("READY");
+      state.animatingIndex = null;
+      state.animProgress = 0;
+      state.hasStartedAny = false;
+
+      computeAllPaths();
+      updateDashboard(names.length, totalWinners, totalPrizeSum);
+      renderResultTable();
+
+      if (fromSettingsBtn) {
+        switchMobileTab("board");
+      } else {
+        resizeAndDrawCanvas();
+      }
+    }
+
+    function resetRevealedOnly() {
+      stopSequentialPlay();
+      state.slotOccupants = Array(state.participants.length).fill(null);
+      state.status = Array(state.participants.length).fill("READY");
+      state.animatingIndex = null;
+      state.animProgress = 0;
+      state.hasStartedAny = false;
+      renderResultTable();
+      resizeAndDrawCanvas();
+    }
+
+    function updateDashboard(totalP, winners, totalMoney) {
+      document.getElementById("statParticipants").textContent = totalP;
+      document.getElementById("statWinners").textContent = winners;
+      document.getElementById("statLosers").textContent = totalP - winners;
+      document.getElementById("statTotalPrize").textContent = totalMoney.toLocaleString();
+      liveCount.textContent = totalP;
+    }
+
+    function renderResultTable() {
+      resultTableBody.innerHTML = "";
+      state.participants.forEach((name, idx) => {
+        const st = state.status[idx];
+        const pathInfo = state.paths[idx];
+        const tr = document.createElement("tr");
+
+        let slotText = "-";
+        let prizeBadge = `<span class="lose-badge">대기중</span>`;
+
+        if (st === "MOVING") {
+          slotText = "이동중...";
+          prizeBadge = `<span class="moving-badge">🏃 사다리 타는 중</span>`;
+        } else if (st === "REVEALED") {
+          slotText = `${pathInfo.endCol + 1}번 자리`;
+          prizeBadge = pathInfo.prize > 0
+            ? `<span class="win-badge">🎉 ${pathInfo.prize.toLocaleString()}원</span>`
+            : `<span class="lose-badge">꽝 (0원)</span>`;
+        }
+
+        tr.innerHTML = `
+          <td style="font-weight:700; color:${getParticipantColor(idx)}">${name}</td>
+          <td>${slotText}</td>
+          <td>${prizeBadge}</td>
+        `;
+        resultTableBody.appendChild(tr);
+      });
+    }
+
+    /**************************************************************
+     * 6. HTML5 Canvas 반응형 중앙 정렬 레이아웃 및 렌더링
+     **************************************************************/
+    function getLayoutMetrics() {
+      const isMobile = window.innerWidth <= 768;
+      const cols = state.participants.length;
+      const containerW = Math.max(300, canvasScrollWrap.clientWidth || 700);
+
+      if (isMobile) {
+        const sidePadding = 52;
+        const idealGap = Math.floor((containerW - sidePadding * 2) / Math.max(1, cols - 1));
+        const colGap = Math.max(92, Math.min(125, idealGap));
+        return {
+          colGap,
+          topMargin: 64,
+          bottomMargin: 86,
+          ladderHeight: 320,
+          sidePadding,
+          cardW: 84,
+          slotW: 86
+        };
+      }
+
+      const sidePadding = 75;
+      const idealGap = Math.floor((containerW - sidePadding * 2) / Math.max(1, cols - 1));
+      const colGap = Math.max(115, Math.min(155, idealGap));
+
+      return {
+        colGap,
+        topMargin: 75,
+        bottomMargin: 95,
+        ladderHeight: 390,
+        sidePadding,
+        cardW: 102,
+        slotW: 106
+      };
+    }
+
+    function getCoord(col, row, layout) {
+      const x = layout.sidePadding + col * layout.colGap;
+      const rowStep = layout.ladderHeight / (state.ladderRows + 1);
+      const y = layout.topMargin + (row + 1) * rowStep;
+      return { x, y };
+    }
+
+    function resizeAndDrawCanvas() {
+      const layout = getLayoutMetrics();
+      const cols = state.participants.length;
+      const dpr = window.devicePixelRatio || 1;
+
+      const width = layout.sidePadding * 2 + (cols - 1) * layout.colGap;
+      const height = layout.topMargin + layout.ladderHeight + layout.bottomMargin;
+
+      canvas.style.width = width + "px";
+      canvas.style.height = height + "px";
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      drawBoard(width, height, layout);
+    }
+
+    function drawBoard(width, height, layout) {
+      ctx.clearRect(0, 0, width, height);
+      const cols = state.participants.length;
+
+      // 1) 기본 사다리 세로 기둥 & 가로 발판
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+
+      for (let c = 0; c < cols; c++) {
+        const top = getCoord(c, -1, layout);
+        const bottom = getCoord(c, state.ladderRows, layout);
+        ctx.beginPath();
+        ctx.moveTo(top.x, top.y);
+        ctx.lineTo(bottom.x, bottom.y);
+        ctx.stroke();
+      }
+
+      for (let r = 0; r < state.ladderRows; r++) {
+        for (let c = 0; c < cols - 1; c++) {
+          if (state.ladderGrid[r][c]) {
+            const p1 = getCoord(c, r, layout);
+            const p2 = getCoord(c + 1, r, layout);
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // 2) 시작 전 블라인드 가림막
+      if (state.blindMode && !state.hasStartedAny) {
+        const firstColX = getCoord(0, 0, layout).x;
+        const lastColX = getCoord(cols - 1, 0, layout).x;
+        const blindX = firstColX - layout.cardW / 2;
+        const blindW = (lastColX - firstColX) + layout.cardW;
+        const blindY = layout.topMargin + 14;
+        const blindH = layout.ladderHeight - 28;
+
+        ctx.save();
+        ctx.fillStyle = "#1e293b";
+        ctx.beginPath();
+        ctx.roundRect(blindX, blindY, blindW, blindH, 14);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 15px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(
+          "🌫️ 사다리 가림막 (상단 이름을 클릭하면 가림막이 걷히고 출발합니다)",
+          blindX + blindW / 2,
+          blindY + blindH / 2
+        );
+        ctx.restore();
+      }
+
+      // 3) 이미 완료된 참가자들의 경로 그리기
+      state.status.forEach((st, idx) => {
+        if (st === "REVEALED") {
+          drawPathWaypoints(state.paths[idx].waypoints, getParticipantColor(idx), 1, null, layout);
+        }
+      });
+
+      // 4) 상단 출발점 카드 & 하단 2단 매칭 슬롯 그리기
+      for (let c = 0; c < cols; c++) {
+        const top = getCoord(c, -1, layout);
+        const bottom = getCoord(c, state.ladderRows, layout);
+        const color = getParticipantColor(c);
+        const st = state.status[c];
+
+        // [상단] 참가자 출발 카드
+        ctx.save();
+        ctx.fillStyle = st === "REVEALED" ? "#94a3b8" : color;
+        ctx.beginPath();
+        ctx.roundRect(top.x - layout.cardW / 2, top.y - 46, layout.cardW, 36, 8);
+        ctx.fill();
+
+        if (st === "MOVING") {
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "#1e293b";
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "center";
+        const topLabel = st === "REVEALED" ? `${state.participants[c]} ✓` : state.participants[c];
+        ctx.fillText(topLabel, top.x, top.y - 24);
+        ctx.restore();
+
+        // [하단] 당첨/꽝 + 이름 안착 2단 슬롯 카드
+        const occupantIdx = state.slotOccupants[c];
+        const isArrived = occupantIdx !== null;
+        const prize = state.bottomSlots[c];
+        const isWinner = prize > 0;
+
+        const boxW = layout.slotW;
+        const boxH = 64;
+        const boxX = bottom.x - boxW / 2;
+        const boxY = bottom.y + 12;
+
+        ctx.save();
+        if (isArrived) {
+          ctx.fillStyle = isWinner ? "#dcfce7" : "#f1f5f9";
+          ctx.strokeStyle = isWinner ? "#16a34a" : "#94a3b8";
+          ctx.lineWidth = 2.5;
+        } else {
+          ctx.fillStyle = "#ffffff";
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 2;
+        }
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 10);
+        ctx.fill();
+        ctx.stroke();
+
+        // 슬롯 상단부: 당첨금 / 꽝 표시
+        ctx.font = "bold 11.5px sans-serif";
+        ctx.textAlign = "center";
+        let prizeLabel = "";
+        if (!isArrived && state.hidePrizeBeforeArrival) {
+          ctx.fillStyle = "#64748b";
+          prizeLabel = `❓ ${c + 1}번 자리`;
+        } else {
+          ctx.fillStyle = isWinner ? "#15803d" : "#64748b";
+          prizeLabel = isWinner ? `🎉 ${prize.toLocaleString()}원` : "꽝 (0원)";
+        }
+        ctx.fillText(prizeLabel, bottom.x, boxY + 21);
+
+        // 슬롯 하단부: 도착한 사람 이름이 놓이는 자리
+        const nameSlotX = boxX + 6;
+        const nameSlotY = boxY + 30;
+        const nameSlotW = boxW - 12;
+        const nameSlotH = 26;
+
+        if (isArrived) {
+          const occColor = getParticipantColor(occupantIdx);
+          ctx.fillStyle = occColor;
+          ctx.beginPath();
+          ctx.roundRect(nameSlotX, nameSlotY, nameSlotW, nameSlotH, 6);
+          ctx.fill();
+
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 11.5px sans-serif";
+          ctx.fillText(state.participants[occupantIdx], bottom.x, nameSlotY + 17);
+        } else {
+          ctx.fillStyle = "#f8fafc";
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.roundRect(nameSlotX, nameSlotY, nameSlotW, nameSlotH, 6);
+          ctx.fill();
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = "11px sans-serif";
+          ctx.fillText("빈 자리", bottom.x, nameSlotY + 17);
+        }
+        ctx.restore();
+      }
+
+      // 5) 현재 이동 중인 참가자의 경로 & 움직이는 이름표(뱃지)
+      if (state.animatingIndex !== null) {
+        const idx = state.animatingIndex;
+        drawPathWaypoints(
+          state.paths[idx].waypoints,
+          getParticipantColor(idx),
+          state.animProgress,
+          state.participants[idx],
+          layout
+        );
+      }
+    }
+
+    function drawPathWaypoints(waypoints, color, progress, movingName, layout) {
+      const totalSegments = waypoints.length - 1;
+      const exactPos = progress * totalSegments;
+      const currentSeg = Math.floor(exactPos);
+      const segFraction = exactPos - currentSeg;
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 6;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+
+      const startPt = getCoord(waypoints[0].col, waypoints[0].row, layout);
+      ctx.moveTo(startPt.x, startPt.y);
+
+      for (let i = 1; i <= Math.min(currentSeg, totalSegments); i++) {
+        const pt = getCoord(waypoints[i].col, waypoints[i].row, layout);
+        ctx.lineTo(pt.x, pt.y);
+      }
+
+      let headX = startPt.x;
+      let headY = startPt.y;
+
+      if (currentSeg < totalSegments) {
+        const p1 = getCoord(waypoints[currentSeg].col, waypoints[currentSeg].row, layout);
+        const p2 = getCoord(waypoints[currentSeg + 1].col, waypoints[currentSeg + 1].row, layout);
+        headX = p1.x + (p2.x - p1.x) * segFraction;
+        headY = p1.y + (p2.y - p1.y) * segFraction;
+        ctx.lineTo(headX, headY);
+      } else {
+        const last = getCoord(waypoints[totalSegments].col, waypoints[totalSegments].row, layout);
+        headX = last.x;
+        headY = last.y;
+      }
+      ctx.stroke();
+
+      // 이동 중인 포인터 및 따라다니는 참가자 이름표 렌더링
+      if (movingName) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(headX, headY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        const badgeW = 90;
+        const badgeH = 26;
+        const badgeX = headX - badgeW / 2;
+        const badgeY = headY - 34;
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 11.5px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(movingName, headX, badgeY + 17);
+
+        if (canvasScrollWrap.scrollWidth > canvasScrollWrap.clientWidth) {
+          const targetScrollLeft = headX - canvasScrollWrap.clientWidth / 2;
+          canvasScrollWrap.scrollLeft += (targetScrollLeft - canvasScrollWrap.scrollLeft) * 0.15;
+        }
+      }
+      ctx.restore();
+    }
+
+    /**************************************************************
+     * 7. 개별 애니메이션 및 순차 릴레이 실행 (Promise 기반)
+     **************************************************************/
+    function animateSingleParticipant(participantIdx) {
+      return new Promise(resolve => {
+        if (state.animatingIndex !== null) {
+          resolve();
+          return;
+        }
+
+        switchMobileTab("board");
+        state.hasStartedAny = true;
+
+        const targetSlot = state.paths[participantIdx].endCol;
+        if (state.status[participantIdx] === "REVEALED") {
+          state.slotOccupants[targetSlot] = null;
+        }
+
+        state.status[participantIdx] = "MOVING";
+        state.animatingIndex = participantIdx;
+        state.animProgress = 0;
+        renderResultTable();
+
+        let lastBeepStep = -1;
+
+        function step() {
+          if (state.animatingIndex !== participantIdx) {
+            resolve();
+            return;
+          }
+
+          state.animProgress += state.animSpeed;
+          const currentStep = Math.floor(state.animProgress * state.paths[participantIdx].waypoints.length);
+          if (currentStep !== lastBeepStep) {
+            playBeep(380 + (currentStep % 4) * 70, 0.04, "triangle");
+            lastBeepStep = currentStep;
+          }
+
+          resizeAndDrawCanvas();
+
+          if (state.animProgress < 1) {
+            requestAnimationFrame(step);
+          } else {
+            state.animProgress = 1;
+            state.status[participantIdx] = "REVEALED";
+            state.slotOccupants[targetSlot] = participantIdx;
+            state.animatingIndex = null;
+
+            const prize = state.paths[participantIdx].prize;
+            if (prize > 0) {
+              playBeep(523.25, 0.09, "sine");
+              setTimeout(() => playBeep(659.25, 0.09, "sine"), 90);
+              setTimeout(() => playBeep(783.99, 0.18, "sine"), 180);
+            } else {
+              playBeep(240, 0.12, "sine");
+            }
+
+            renderResultTable();
+            resizeAndDrawCanvas();
+            resolve();
+          }
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    async function runSequentialAll() {
+      if (state.isSequentialRunning) {
+        stopSequentialPlay();
+        return;
+      }
+
+      if (state.status.every(s => s === "REVEALED")) {
+        resetRevealedOnly();
+      }
+
+      state.isSequentialRunning = true;
+      state.stopSequentialFlag = false;
+      btnSequential.textContent = "⏹️ 정지";
+
+      for (let i = 0; i < state.participants.length; i++) {
+        if (state.stopSequentialFlag) break;
+        if (state.status[i] === "REVEALED") continue;
+
+        await animateSingleParticipant(i);
+        if (state.stopSequentialFlag) break;
+
+        await new Promise(r => setTimeout(r, 450));
+      }
+
+      stopSequentialPlay();
+    }
+
+    function stopSequentialPlay() {
+      state.stopSequentialFlag = true;
+      state.isSequentialRunning = false;
+      btnSequential.textContent = "▶️ 차례로 실행";
+    }
+
+    // 캔버스 상단 참가자 이름 카드 클릭/터치 이벤트
+    canvas.addEventListener("click", e => {
+      if (state.animatingIndex !== null || state.isSequentialRunning) return;
+
+      const layout = getLayoutMetrics();
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      for (let c = 0; c < state.participants.length; c++) {
+        const top = getCoord(c, -1, layout);
+        if (
+          clickX >= top.x - layout.cardW / 2 &&
+          clickX <= top.x + layout.cardW / 2 &&
+          clickY >= top.y - 46 &&
+          clickY <= top.y - 10
+        ) {
+          animateSingleParticipant(c);
+          break;
+        }
+      }
+    });
+
+    window.addEventListener("resize", () => resizeAndDrawCanvas());
+
+    // 버튼 이벤트 바인딩
+    document.getElementById("btnApplySettings").addEventListener("click", () => initGame(true));
+    document.getElementById("btnRegenerate").addEventListener("click", () => initGame(false));
+    document.getElementById("btnResetReveal").addEventListener("click", resetRevealedOnly);
+    btnSequential.addEventListener("click", runSequentialAll);
+
+    blindToggle.addEventListener("change", e => {
+      state.blindMode = e.target.checked;
+      resizeAndDrawCanvas();
+    });
+    hidePrizeToggle.addEventListener("change", e => {
+      state.hidePrizeBeforeArrival = e.target.checked;
+      resizeAndDrawCanvas();
+    });
+
+    // 초기 실행
+    renderPrizeConfigInputs();
+    initGame(false);
+  </script>
+</body>
+</html>
