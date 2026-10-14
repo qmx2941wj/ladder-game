@@ -223,16 +223,37 @@
     /* 모바일 전용 반응형/적응형 UI (768px 이하) */
     @media (max-width: 768px) {
       body { padding: 10px; }
+      textarea, input[type="text"], input[type="number"] {
+        font-size: 16px !important; /* iOS 사파리 자동 확대 방지 */
+      }
       .header-bar { padding: 12px 14px; gap: 10px; }
-      .header-title { font-size: 1.1rem; width: 100%; }
+      .header-title { font-size: 1.1rem; width: 100%; text-align: center; }
       .status-badges { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
       .badge { padding: 6px 4px; font-size: 0.76rem; text-align: center; }
-      .action-btns { width: 100%; justify-content: space-between; }
-      .action-btns button { flex: 1 1 calc(33.3% - 6px); padding: 9px 6px; font-size: 0.8rem; }
+      .action-btns { width: 100%; display: flex; flex-direction: column; gap: 8px; }
+      .action-options {
+        width: 100%;
+        display: flex;
+        justify-content: space-around;
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 8px;
+      }
+      .option-label { font-size: 0.78rem; padding: 4px; }
+      .action-button-group { width: 100%; display: flex; gap: 6px; }
+      .action-button-group button { flex: 1 1 0; padding: 10px 4px; font-size: 0.8rem; }
 
       .mobile-tabs { display: grid; }
       .main-container { grid-template-columns: 1fr; }
       .board-card { padding: 14px 10px; }
+
+      /* 가로 스크롤 가능한 보드 영역 부드러운 스크롤 & 페이드 힌트 */
+      .canvas-scroll-wrap {
+        position: relative;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
 
       body[data-mobile-tab="board"] #settingsCard,
       body[data-mobile-tab="board"] #resultsCard { display: none; }
@@ -243,6 +264,23 @@
       body[data-mobile-tab="results"] #boardSection,
       body[data-mobile-tab="results"] #settingsCard { display: none; }
     }
+
+    /* 공통 옵션 라벨 및 버튼 그룹 */
+    .action-options { display: flex; gap: 10px; align-items: center; }
+    .option-label {
+      font-size: 0.84rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 6px;
+      border-radius: 6px;
+      transition: background 0.15s ease;
+    }
+    .option-label:hover { background: #f1f5f9; }
+    .action-button-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   </style>
 </head>
 <body data-mobile-tab="board">
@@ -256,15 +294,19 @@
       <div class="badge">총액 <span id="statTotalPrize">0</span>원</div>
     </div>
     <div class="action-btns">
-      <label style="font-size:0.84rem; font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer;">
-        <input type="checkbox" id="blindToggle" checked> 🌫️ 시작 전 가림막
-      </label>
-      <label style="font-size:0.84rem; font-weight:600; display:flex; align-items:center; gap:4px; cursor:pointer; margin-right:4px;">
-        <input type="checkbox" id="hidePrizeToggle" checked> ❓ 도착 전 당첨금 숨김
-      </label>
-      <button class="btn-secondary" id="btnSequential">▶️ 차례로 실행</button>
-      <button class="btn-outline" id="btnResetReveal">↩️ 초기화</button>
-      <button class="btn-primary" id="btnRegenerate">🔄 재배치</button>
+      <div class="action-options">
+        <label class="option-label">
+          <input type="checkbox" id="blindToggle" checked> <span>🌫️ 가림막</span>
+        </label>
+        <label class="option-label">
+          <input type="checkbox" id="hidePrizeToggle" checked> <span>❓ 당첨금 숨김</span>
+        </label>
+      </div>
+      <div class="action-button-group">
+        <button class="btn-secondary" id="btnSequential">▶️ 순차 실행</button>
+        <button class="btn-outline" id="btnResetReveal">↩️ 초기화</button>
+        <button class="btn-primary" id="btnRegenerate">🔄 재배치</button>
+      </div>
     </div>
   </header>
 
@@ -279,7 +321,7 @@
     <!-- 2. 사다리 메인 보드 -->
     <section class="board-card" id="boardSection">
       <div class="board-hint">
-        💡 사다리 상단의 <b>참가자 이름 박스</b>를 클릭하거나 <b>[▶️ 차례로 실행]</b>을 누르면 가림막이 걷히며 당첨/꽝 자리로 이동합니다!
+        💡 상단 <b>이름 박스</b>를 탭(클릭)하거나 <b>[▶️ 순차 실행]</b>을 누르면 사다리가 시작됩니다. (참가자가 많으면 좌우 스크롤 ↔️)
       </div>
 
       <div class="canvas-scroll-wrap" id="canvasScrollWrap">
@@ -648,6 +690,8 @@
         const st = state.status[idx];
         const pathInfo = state.paths[idx];
         const tr = document.createElement("tr");
+        tr.style.cursor = "pointer";
+        tr.title = "클릭 시 해당 참가자의 사다리 위치로 이동합니다";
 
         let slotText = "-";
         let prizeBadge = `<span class="lose-badge">대기중</span>`;
@@ -667,6 +711,22 @@
           <td>${slotText}</td>
           <td>${prizeBadge}</td>
         `;
+
+        tr.addEventListener("click", () => {
+          switchMobileTab("board");
+          const layout = getLayoutMetrics();
+          const targetCoord = getCoord(idx, -1, layout);
+          if (canvasScrollWrap.scrollWidth > canvasScrollWrap.clientWidth) {
+            canvasScrollWrap.scrollTo({
+              left: targetCoord.x - canvasScrollWrap.clientWidth / 2,
+              behavior: "smooth"
+            });
+          }
+          if (state.status[idx] !== "REVEALED" && state.animatingIndex === null && !state.isSequentialRunning) {
+            animateSingleParticipant(idx);
+          }
+        });
+
         resultTableBody.appendChild(tr);
       });
     }
@@ -674,15 +734,26 @@
     /**************************************************************
      * 6. HTML5 Canvas 반응형 중앙 정렬 레이아웃 및 렌더링
      **************************************************************/
+    // 캔버스 내 텍스트가 박스 너비(maxW)를 초과할 경우 안전하게 '..' 말줄임표 처리
+    function getFittedText(ctx, text, maxW) {
+      if (!text) return "";
+      if (ctx.measureText(text).width <= maxW) return text;
+      let str = text;
+      while (str.length > 1 && ctx.measureText(str + "..").width > maxW) {
+        str = str.slice(0, -1);
+      }
+      return str + "..";
+    }
+
     function getLayoutMetrics() {
       const isMobile = window.innerWidth <= 768;
       const cols = state.participants.length;
       const containerW = Math.max(300, canvasScrollWrap.clientWidth || 700);
 
       if (isMobile) {
-        const sidePadding = 52;
+        const sidePadding = cols <= 3 ? Math.max(24, Math.floor((containerW - (cols - 1) * 110) / 2)) : 52;
         const idealGap = Math.floor((containerW - sidePadding * 2) / Math.max(1, cols - 1));
-        const colGap = Math.max(92, Math.min(125, idealGap));
+        const colGap = Math.max(90, Math.min(125, idealGap));
         return {
           colGap,
           topMargin: 64,
@@ -780,13 +851,23 @@
         ctx.fill();
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 15px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText(
-          "🌫️ 사다리 가림막 (상단 이름을 클릭하면 가림막이 걷히고 출발합니다)",
-          blindX + blindW / 2,
-          blindY + blindH / 2
-        );
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile || blindW < 360) {
+          ctx.font = "bold 13px sans-serif";
+          ctx.fillText("🌫️ 사다리 가림막", blindX + blindW / 2, blindY + blindH / 2 - 10);
+          ctx.font = "11.5px sans-serif";
+          ctx.fillStyle = "#cbd5e1";
+          ctx.fillText("이름을 탭하면 출발!", blindX + blindW / 2, blindY + blindH / 2 + 13);
+        } else {
+          ctx.font = "bold 15px sans-serif";
+          ctx.fillText(
+            "🌫️ 사다리 가림막 (상단 이름을 클릭하면 가림막이 걷히고 출발합니다)",
+            blindX + blindW / 2,
+            blindY + blindH / 2
+          );
+        }
         ctx.restore();
       }
 
@@ -821,7 +902,8 @@
         ctx.font = "bold 12px sans-serif";
         ctx.textAlign = "center";
         const topLabel = st === "REVEALED" ? `${state.participants[c]} ✓` : state.participants[c];
-        ctx.fillText(topLabel, top.x, top.y - 24);
+        const fittedTopLabel = getFittedText(ctx, topLabel, layout.cardW - 8);
+        ctx.fillText(fittedTopLabel, top.x, top.y - 24);
         ctx.restore();
 
         // [하단] 당첨/꽝 + 이름 안착 2단 슬롯 카드
@@ -878,7 +960,8 @@
 
           ctx.fillStyle = "#ffffff";
           ctx.font = "bold 11.5px sans-serif";
-          ctx.fillText(state.participants[occupantIdx], bottom.x, nameSlotY + 17);
+          const fittedName = getFittedText(ctx, state.participants[occupantIdx], nameSlotW - 8);
+          ctx.fillText(fittedName, bottom.x, nameSlotY + 17);
         } else {
           ctx.fillStyle = "#f8fafc";
           ctx.strokeStyle = "#cbd5e1";
@@ -956,7 +1039,9 @@
         ctx.fill();
         ctx.stroke();
 
-        const badgeW = 90;
+        ctx.font = "bold 11.5px sans-serif";
+        const nameMetrics = ctx.measureText(movingName);
+        const badgeW = Math.max(90, nameMetrics.width + 20);
         const badgeH = 26;
         const badgeX = headX - badgeW / 2;
         const badgeY = headY - 34;
@@ -967,7 +1052,6 @@
         ctx.fill();
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 11.5px sans-serif";
         ctx.textAlign = "center";
         ctx.fillText(movingName, headX, badgeY + 17);
 
@@ -1075,11 +1159,29 @@
     function stopSequentialPlay() {
       state.stopSequentialFlag = true;
       state.isSequentialRunning = false;
-      btnSequential.textContent = "▶️ 차례로 실행";
+      btnSequential.textContent = "▶️ 순차 실행";
     }
 
-    // 캔버스 상단 참가자 이름 카드 클릭/터치 이벤트
-    canvas.addEventListener("click", e => {
+    // 모바일 터치 스크롤 제스처와 단순 탭(클릭) 구분 판정 로직
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let isTouchDragging = false;
+
+    canvas.addEventListener("pointerdown", e => {
+      touchStartX = e.clientX;
+      touchStartY = e.clientY;
+      isTouchDragging = false;
+    });
+
+    canvas.addEventListener("pointermove", e => {
+      // 8픽셀 이상 움직이면 화면 스크롤 제스처로 판정
+      if (Math.hypot(e.clientX - touchStartX, e.clientY - touchStartY) > 8) {
+        isTouchDragging = true;
+      }
+    });
+
+    canvas.addEventListener("pointerup", e => {
+      if (isTouchDragging) return; // 화면을 좌우로 스크롤한 경우 사다리 출발 방지
       if (state.animatingIndex !== null || state.isSequentialRunning) return;
 
       const layout = getLayoutMetrics();
