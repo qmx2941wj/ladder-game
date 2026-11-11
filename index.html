@@ -290,7 +290,7 @@
     <div class="header-title">🪜 인터랙티브 사다리타기</div>
     <div class="status-badges">
       <div class="badge">참가자 <span id="statParticipants">0</span>명</div>
-      <div class="badge">당첨 <span id="statWinners">0</span> / 꽝 <span id="statLosers">0</span></div>
+      <div class="badge">당첨 <span id="statWinners">0</span> / 0원 <span id="statLosers">0</span></div>
       <div class="badge">총액 <span id="statTotalPrize">0</span>원</div>
     </div>
     <div class="action-btns">
@@ -299,7 +299,7 @@
           <input type="checkbox" id="blindToggle" checked> <span>🌫️ 가림막</span>
         </label>
         <label class="option-label">
-          <input type="checkbox" id="hidePrizeToggle" checked> <span>❓ 당첨금 숨김</span>
+          <input type="checkbox" id="hidePrizeToggle"> <span>❓ 당첨금 숨김</span>
         </label>
       </div>
       <div class="action-button-group">
@@ -355,7 +355,7 @@
           </div>
           <div class="prize-list" id="prizeList"></div>
           <p style="font-size:0.78rem; color:var(--muted);">
-            * 참가자 수보다 당첨 인원이 적으면 나머지는 자동으로 <b>'꽝(0원)'</b>으로 배정됩니다.
+            * 참가자 수보다 당첨 인원이 적으면 나머지는 자동으로 <b>'0원'</b>으로 배정됩니다.
           </p>
         </div>
 
@@ -405,7 +405,7 @@
       isSequentialRunning: false,
       stopSequentialFlag: false,
       blindMode: true,              // 기본값: 시작 전 사다리 가림막 체크
-      hidePrizeBeforeArrival: true  // 기본값: 도착 전 당첨금 숨김 체크
+      hidePrizeBeforeArrival: false // 기본값: 도착 전 당첨금 숨김 해제
     };
 
     /**************************************************************
@@ -702,7 +702,7 @@
           slotText = `${pathInfo.endCol + 1}번 자리`;
           prizeBadge = pathInfo.prize > 0
             ? `<span class="win-badge">🎉 ${pathInfo.prize.toLocaleString()}원</span>`
-            : `<span class="lose-badge">꽝 (0원)</span>`;
+            : `<span class="lose-badge">0원</span>`;
         }
 
         tr.innerHTML = `
@@ -912,7 +912,7 @@
         ctx.fillText(fittedTopLabel, top.x, top.y - 24);
         ctx.restore();
 
-        // [하단] 당첨/꽝 + 이름 안착 2단 슬롯 카드
+        // [하단] 당첨/0원 + 이름 안착 2단 슬롯 카드
         const occupantIdx = state.slotOccupants[c];
         const isArrived = occupantIdx !== null;
         const prize = state.bottomSlots[c];
@@ -938,7 +938,7 @@
         ctx.fill();
         ctx.stroke();
 
-        // 슬롯 상단부: 당첨금 / 꽝 표시
+        // 슬롯 상단부: 당첨금 / 0원 표시
         ctx.textAlign = "center";
         const narrow = boxW < 70;
         let prizeLabel = "";
@@ -949,7 +949,7 @@
           ctx.fillStyle = isWinner ? "#15803d" : "#64748b";
           prizeLabel = isWinner
             ? (narrow ? `${prize.toLocaleString()}원` : `🎉 ${prize.toLocaleString()}원`)
-            : (narrow ? "꽝" : "꽝 (0원)");
+            : "0원";
         }
         ctx.fillText(fitText(ctx, prizeLabel, boxW - 4, 11.5), bottom.x, boxY + 21);
 
