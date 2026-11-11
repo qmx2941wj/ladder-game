@@ -341,10 +341,10 @@
         <!-- 참가자 입력 (인원수 자동 계산) -->
         <div class="form-group">
           <div class="form-label">
-            <span>참가자 명단 (쉼표 또는 줄바꿈 구분)</span>
-            <span>자동 인식: <strong id="liveCount" style="color:var(--primary);">8</strong>명</span>
+            <span>참가자 명단 (띄어쓰기·쉼표·줄바꿈 구분)</span>
+            <span>자동 인식: <strong id="liveCount" style="color:var(--primary);">6</strong>명</span>
           </div>
-          <textarea id="namesInput" rows="3" placeholder="참가자 이름을 쉼표(,)나 줄바꿈으로 구분해 입력하세요">아이언맨, 캡틴 아메리카, 토르, 스파이더맨, 헐크, 블랙 위도우, 닥터 스트레인지, 호크아이</textarea>
+          <textarea id="namesInput" rows="3" placeholder="예: 유진 영석 예은 (이름에 띄어쓰기가 있으면 쉼표로 구분)">유진 영석 예은 금주 서하 호영</textarea>
         </div>
 
         <!-- 당첨금 및 당첨자 수 설정 -->
@@ -386,10 +386,7 @@
      * 1. 핵심 상태 데이터 모델 (State)
      **************************************************************/
     const state = {
-      participants: [
-        "아이언맨", "캡틴 아메리카", "토르", "스파이더맨",
-        "헐크", "블랙 위도우", "닥터 스트레인지", "호크아이"
-      ],
+      participants: ["유진", "영석", "예은", "금주", "서하", "호영"],
       prizeConfigs: [
         { amount: 50000, count: 1 },
         { amount: 30000, count: 1 },
@@ -494,8 +491,10 @@
      * 3. 통합 설정 패널 UI (자동 인원 인식 & 당첨 항목 관리)
      **************************************************************/
     function parseNames() {
-      return namesInput.value
-        .split(/[\n,]+/)
+      // 쉼표·줄바꿈이 있으면 그것으로만 구분(이름 속 띄어쓰기 유지), 없으면 띄어쓰기로 구분
+      const raw = namesInput.value.trim();
+      return raw
+        .split(/[\n,]/.test(raw) ? /[\n,]+/ : /\s+/)
         .map(s => s.trim())
         .filter(Boolean);
     }
