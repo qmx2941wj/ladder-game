@@ -745,23 +745,31 @@
       return str + "..";
     }
 
+    // 박스 폭에 맞을 때까지 글자 크기를 줄이고(최소 8px), 그래도 넘치면 말줄임
+    function fitText(ctx, text, maxW, size, weight = "bold") {
+      ctx.font = `${weight} ${size}px sans-serif`;
+      while (size > 8 && ctx.measureText(text).width > maxW) ctx.font = `${weight} ${--size}px sans-serif`;
+      return getFittedText(ctx, text, maxW);
+    }
+
     function getLayoutMetrics() {
       const isMobile = window.innerWidth <= 768;
       const cols = state.participants.length;
       const containerW = Math.max(300, canvasScrollWrap.clientWidth || 700);
 
       if (isMobile) {
-        const sidePadding = cols <= 3 ? Math.max(24, Math.floor((containerW - (cols - 1) * 110) / 2)) : 52;
-        const idealGap = Math.floor((containerW - sidePadding * 2) / Math.max(1, cols - 1));
-        const colGap = Math.max(90, Math.min(125, idealGap));
+        // 화면 가로폭에 맞춤: 카드 폭 = 간격 - 4 (최소 간격 40px 미만이 되는 인원부터는 좌우 스크롤)
+        const colGap = Math.max(40, Math.min(125, Math.floor((containerW + 4) / cols)));
+        const cardW = Math.min(84, colGap - 4);
+        const sidePadding = Math.max(cardW / 2, Math.floor((containerW - (cols - 1) * colGap) / 2));
         return {
           colGap,
           topMargin: 64,
           bottomMargin: 86,
           ladderHeight: 320,
           sidePadding,
-          cardW: 84,
-          slotW: 86
+          cardW,
+          slotW: cardW
         };
       }
 
@@ -899,10 +907,9 @@
         }
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 12px sans-serif";
         ctx.textAlign = "center";
         const topLabel = st === "REVEALED" ? `${state.participants[c]} ✓` : state.participants[c];
-        const fittedTopLabel = getFittedText(ctx, topLabel, layout.cardW - 8);
+        const fittedTopLabel = fitText(ctx, topLabel, layout.cardW - 4, 12);
         ctx.fillText(fittedTopLabel, top.x, top.y - 24);
         ctx.restore();
 
@@ -933,22 +940,25 @@
         ctx.stroke();
 
         // 슬롯 상단부: 당첨금 / 꽝 표시
-        ctx.font = "bold 11.5px sans-serif";
         ctx.textAlign = "center";
+        const narrow = boxW < 70;
         let prizeLabel = "";
         if (!isArrived && state.hidePrizeBeforeArrival) {
           ctx.fillStyle = "#64748b";
-          prizeLabel = `❓ ${c + 1}번 자리`;
+          prizeLabel = narrow ? `❓${c + 1}번` : `❓ ${c + 1}번 자리`;
         } else {
           ctx.fillStyle = isWinner ? "#15803d" : "#64748b";
-          prizeLabel = isWinner ? `🎉 ${prize.toLocaleString()}원` : "꽝 (0원)";
+          prizeLabel = isWinner
+            ? (narrow ? `${prize.toLocaleString()}원` : `🎉 ${prize.toLocaleString()}원`)
+            : (narrow ? "꽝" : "꽝 (0원)");
         }
-        ctx.fillText(prizeLabel, bottom.x, boxY + 21);
+        ctx.fillText(fitText(ctx, prizeLabel, boxW - 4, 11.5), bottom.x, boxY + 21);
 
         // 슬롯 하단부: 도착한 사람 이름이 놓이는 자리
-        const nameSlotX = boxX + 6;
+        const nameInset = narrow ? 2 : 6;
+        const nameSlotX = boxX + nameInset;
         const nameSlotY = boxY + 30;
-        const nameSlotW = boxW - 12;
+        const nameSlotW = boxW - nameInset * 2;
         const nameSlotH = 26;
 
         if (isArrived) {
@@ -959,8 +969,7 @@
           ctx.fill();
 
           ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 11.5px sans-serif";
-          const fittedName = getFittedText(ctx, state.participants[occupantIdx], nameSlotW - 8);
+          const fittedName = fitText(ctx, state.participants[occupantIdx], nameSlotW - 4, 11.5);
           ctx.fillText(fittedName, bottom.x, nameSlotY + 17);
         } else {
           ctx.fillStyle = "#f8fafc";
@@ -974,8 +983,7 @@
           ctx.setLineDash([]);
 
           ctx.fillStyle = "#94a3b8";
-          ctx.font = "11px sans-serif";
-          ctx.fillText("빈 자리", bottom.x, nameSlotY + 17);
+          ctx.fillText(fitText(ctx, "빈 자리", nameSlotW - 4, 11, "normal"), bottom.x, nameSlotY + 17);
         }
         ctx.restore();
       }
