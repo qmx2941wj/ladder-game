@@ -290,8 +290,7 @@
     <div class="header-title">🪜 인터랙티브 사다리타기</div>
     <div class="status-badges">
       <div class="badge">참가자 <span id="statParticipants">0</span>명</div>
-      <div class="badge">당첨 <span id="statWinners">0</span> / 0원 <span id="statLosers">0</span></div>
-      <div class="badge">총액 <span id="statTotalPrize">0</span>원</div>
+      <div class="badge">당첨 <span id="statWinners">0</span> / 꽝 <span id="statLosers">0</span></div>
     </div>
     <div class="action-btns">
       <div class="action-options">
@@ -299,7 +298,7 @@
           <input type="checkbox" id="blindToggle" checked> <span>🌫️ 가림막</span>
         </label>
         <label class="option-label">
-          <input type="checkbox" id="hidePrizeToggle"> <span>❓ 당첨금 숨김</span>
+          <input type="checkbox" id="hidePrizeToggle"> <span>❓ 결과 숨김</span>
         </label>
       </div>
       <div class="action-button-group">
@@ -342,20 +341,20 @@
         <div class="form-group">
           <div class="form-label">
             <span>참가자 명단 (띄어쓰기·쉼표·줄바꿈 구분)</span>
-            <span>자동 인식: <strong id="liveCount" style="color:var(--primary);">6</strong>명</span>
+            <span>자동 인식: <strong id="liveCount" style="color:var(--primary);">5</strong>명</span>
           </div>
-          <textarea id="namesInput" rows="3" placeholder="예: 유진 영석 예은 (이름에 띄어쓰기가 있으면 쉼표로 구분)">유진 영석 예은 금주 서하 호영</textarea>
+          <textarea id="namesInput" rows="3" placeholder="예: 아이언맨 토르 헐크 (이름에 띄어쓰기가 있으면 쉼표로 구분)">아이언맨 캡틴아메리카 토르 헐크 블랙위도우</textarea>
         </div>
 
-        <!-- 당첨금 및 당첨자 수 설정 -->
+        <!-- 등수 및 당첨자 수 설정 -->
         <div class="form-group">
           <div class="form-label">
-            <span>당첨 금액(원) 및 당첨 인원(명) 설정</span>
+            <span>등수 및 당첨 인원(명) 설정</span>
             <button type="button" class="btn-outline btn-sm" id="btnAddPrize">+ 항목 추가</button>
           </div>
           <div class="prize-list" id="prizeList"></div>
           <p style="font-size:0.78rem; color:var(--muted);">
-            * 참가자 수보다 당첨 인원이 적으면 나머지는 자동으로 <b>'0원'</b>으로 배정됩니다.
+            * 참가자 수보다 당첨 인원이 적으면 나머지는 자동으로 <b>'꽝'</b>으로 배정됩니다.
           </p>
         </div>
 
@@ -372,7 +371,7 @@
             <tr>
               <th>참가자</th>
               <th>도착 자리</th>
-              <th>결과 (당첨금)</th>
+              <th>결과 (등수)</th>
             </tr>
           </thead>
           <tbody id="resultTableBody"></tbody>
@@ -386,14 +385,15 @@
      * 1. 핵심 상태 데이터 모델 (State)
      **************************************************************/
     const state = {
-      participants: ["유진", "영석", "예은", "금주", "서하", "호영"],
+      participants: ["아이언맨", "캡틴아메리카", "토르", "헐크", "블랙위도우"],
       prizeConfigs: [
-        { amount: 10000, count: 2 },
-        { amount: 9000, count: 1 }
+        { label: "1등", count: 1 },
+        { label: "2등", count: 1 },
+        { label: "3등", count: 1 }
       ],
       ladderRows: 14,               // 가로 발판 행 수
       ladderGrid: [],               // 2차원 불리언 배열 [row][col]
-      bottomSlots: [],              // 하단 슬롯에 배치된 당첨금 배열
+      bottomSlots: [],              // 하단 슬롯에 배치된 등수 배열 ("" = 꽝)
       slotOccupants: [],            // 하단 슬롯에 도착해 안착한 참가자 인덱스 (도착 전 null)
       paths: [],                    // 참가자별 이동 경유지(Waypoints) 및 도착 정보
       status: [],                   // 참가자별 상태: 'READY' | 'MOVING' | 'REVEALED'
@@ -404,7 +404,7 @@
       isSequentialRunning: false,
       stopSequentialFlag: false,
       blindMode: true,              // 기본값: 시작 전 사다리 가림막 체크
-      hidePrizeBeforeArrival: false // 기본값: 도착 전 당첨금 숨김 해제
+      hidePrizeBeforeArrival: false // 기본값: 도착 전 결과 숨김 해제
     };
 
     /**************************************************************
@@ -508,16 +508,16 @@
         const row = document.createElement("div");
         row.className = "prize-row";
         row.innerHTML = `
-          <input type="number" min="0" step="1000" value="${item.amount}" placeholder="당첨금(원)" data-idx="${idx}" class="inp-amount" />
+          <input type="text" value="${item.label}" placeholder="등수 (예: 1등)" data-idx="${idx}" class="inp-label" />
           <input type="number" min="1" value="${item.count}" placeholder="인원(명)" data-idx="${idx}" class="inp-count" />
           <button type="button" class="btn-del" data-idx="${idx}" title="삭제">✕</button>
         `;
         prizeListEl.appendChild(row);
       });
 
-      prizeListEl.querySelectorAll(".inp-amount").forEach(el => {
+      prizeListEl.querySelectorAll(".inp-label").forEach(el => {
         el.addEventListener("input", e => {
-          state.prizeConfigs[e.target.dataset.idx].amount = Number(e.target.value) || 0;
+          state.prizeConfigs[e.target.dataset.idx].label = e.target.value.trim();
         });
       });
       prizeListEl.querySelectorAll(".inp-count").forEach(el => {
@@ -534,7 +534,7 @@
     }
 
     document.getElementById("btnAddPrize").addEventListener("click", () => {
-      state.prizeConfigs.push({ amount: 10000, count: 1 });
+      state.prizeConfigs.push({ label: `${state.prizeConfigs.length + 1}등`, count: 1 });
       renderPrizeConfigInputs();
     });
 
@@ -621,15 +621,13 @@
       }
 
       let totalWinners = 0;
-      let totalPrizeSum = 0;
       const flatPrizes = [];
 
       for (const cfg of state.prizeConfigs) {
-        if (cfg.amount > 0 && cfg.count > 0) {
+        if (cfg.label && cfg.count > 0) {
           totalWinners += cfg.count;
-          totalPrizeSum += cfg.amount * cfg.count;
           for (let i = 0; i < cfg.count; i++) {
-            flatPrizes.push(cfg.amount);
+            flatPrizes.push(cfg.label);
           }
         }
       }
@@ -640,7 +638,7 @@
       }
 
       while (flatPrizes.length < names.length) {
-        flatPrizes.push(0);
+        flatPrizes.push("");
       }
 
       state.participants = names;
@@ -653,7 +651,7 @@
       state.hasStartedAny = false;
 
       computeAllPaths();
-      updateDashboard(names.length, totalWinners, totalPrizeSum);
+      updateDashboard(names.length, totalWinners);
       renderResultTable();
 
       if (fromSettingsBtn) {
@@ -674,11 +672,10 @@
       resizeAndDrawCanvas();
     }
 
-    function updateDashboard(totalP, winners, totalMoney) {
+    function updateDashboard(totalP, winners) {
       document.getElementById("statParticipants").textContent = totalP;
       document.getElementById("statWinners").textContent = winners;
       document.getElementById("statLosers").textContent = totalP - winners;
-      document.getElementById("statTotalPrize").textContent = totalMoney.toLocaleString();
       liveCount.textContent = totalP;
     }
 
@@ -699,9 +696,9 @@
           prizeBadge = `<span class="moving-badge">🏃 사다리 타는 중</span>`;
         } else if (st === "REVEALED") {
           slotText = `${pathInfo.endCol + 1}번 자리`;
-          prizeBadge = pathInfo.prize > 0
-            ? `<span class="win-badge">🎉 ${pathInfo.prize.toLocaleString()}원</span>`
-            : `<span class="lose-badge">0원</span>`;
+          prizeBadge = pathInfo.prize
+            ? `<span class="win-badge">🎉 ${pathInfo.prize}</span>`
+            : `<span class="lose-badge">꽝</span>`;
         }
 
         tr.innerHTML = `
@@ -911,11 +908,11 @@
         ctx.fillText(fittedTopLabel, top.x, top.y - 24);
         ctx.restore();
 
-        // [하단] 당첨/0원 + 이름 안착 2단 슬롯 카드
+        // [하단] 등수/꽝 + 이름 안착 2단 슬롯 카드
         const occupantIdx = state.slotOccupants[c];
         const isArrived = occupantIdx !== null;
         const prize = state.bottomSlots[c];
-        const isWinner = prize > 0;
+        const isWinner = !!prize;
 
         const boxW = layout.slotW;
         const boxH = 64;
@@ -937,7 +934,7 @@
         ctx.fill();
         ctx.stroke();
 
-        // 슬롯 상단부: 당첨금 / 0원 표시
+        // 슬롯 상단부: 등수 / 꽝 표시
         ctx.textAlign = "center";
         const narrow = boxW < 70;
         let prizeLabel = "";
@@ -947,8 +944,8 @@
         } else {
           ctx.fillStyle = isWinner ? "#15803d" : "#64748b";
           prizeLabel = isWinner
-            ? (narrow ? `${prize.toLocaleString()}원` : `🎉 ${prize.toLocaleString()}원`)
-            : "0원";
+            ? (narrow ? prize : `🎉 ${prize}`)
+            : "꽝";
         }
         ctx.fillText(fitText(ctx, prizeLabel, boxW - 4, 11.5), bottom.x, boxY + 21);
 
@@ -1136,7 +1133,7 @@
             state.animatingIndex = null;
 
             const prize = state.paths[participantIdx].prize;
-            if (prize > 0) {
+            if (prize) {
               playBeep(523.25, 0.09, "sine");
               setTimeout(() => playBeep(659.25, 0.09, "sine"), 90);
               setTimeout(() => playBeep(783.99, 0.18, "sine"), 180);
